@@ -1,0 +1,7 @@
+{
+  "name": "BJJ",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}
