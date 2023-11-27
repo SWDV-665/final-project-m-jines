@@ -1,6 +1,8 @@
 import { Component } from '@angular/core';
 import { ToastController } from '@ionic/angular';
 import { AlertController } from '@ionic/angular';
+import { Camera, CameraResultType } from '@capacitor/camera';
+import { Share } from '@capacitor/share';
 
 @Component({
   selector: 'app-tab2',
@@ -8,24 +10,47 @@ import { AlertController } from '@ionic/angular';
   styleUrls: ['tab2.page.scss']
 })
 export class Tab2Page {
+  wantToAddMedia: boolean =false;
   title = "Training Journal"
   
   entries = [
     {
       date: "09/10/2023",
       techniques: "Single leg X, Ashi Garami",
-      notes: "notes about training here"
+      notes: "notes about training here",
+      media: ""
     }
     ,{
       date: "09/12/2023",
       techniques: "Ashi Garami, Butterfly Ashi",
-      notes: "notes here blah blah blah "
+      notes: "notes here blah blah blah ",
+      media: ""
     }
   ];
 
+  currentMedia: string = ''; 
   constructor(public toastCtrl: ToastController, public alertCtrl: AlertController) {
 
   }
+  async shareEntry(entry: any, index: any) {
+    console.log("Sharing Entry - ", entry, index);
+    const toast = this.toastCtrl.create({
+      message: 'Sharing Entry: ' + entry.date,
+      duration: 3000
+    });
+    (await toast).present();
+    try {
+      await Share.share({
+        title: 'Sharing Journal Entry',
+        text: 'Entry Date: ' + entry.date + ", Techniques: " + entry.techniques + ", Notes: "+entry.notes+ ", Entry Media: "+ entry.media
+      });
+    } catch (error) {
+      console.error('Error sharing entry: ', error);
+      
+    }
+    
+  }
+
   async removeEntry(entry:any, index:any){
     console.log("Removing Item - ", entry, index);
     const toast = this.toastCtrl.create({
@@ -51,7 +76,21 @@ export class Tab2Page {
     this.showAddEntryPrompt();
   }
 
+  async captureMedia() {
+    const image = await Camera.getPhoto({
+      resultType: CameraResultType.Uri, 
+      
+    });
+    if (image.webPath) {
+      this.currentMedia = image.webPath;
+    } else {
+      console.error('No image path returned');
+      this.currentMedia = ''; 
+    }
+  }
+
   async showAddEntryPrompt() {
+    this.wantToAddMedia =false;
     const prompt = await this.alertCtrl.create({
       header:'New Journal Entry',
       cssClass: "large-prompt",
@@ -72,8 +111,18 @@ export class Tab2Page {
           type: 'textarea',
           placeholder: "Notes",
         },
+      
       ],
       buttons: [
+        {
+          text: 'media',
+          handler: () => {
+            console.log('Want to add media. ')
+            this.wantToAddMedia=true;
+            return false;
+          }
+        },
+
         {
           text: 'Cancel',
           handler: data => {
@@ -82,9 +131,15 @@ export class Tab2Page {
         },
         {
           text: 'save',
-          handler: entry => {
+          handler: async entry => {
             console.log('Save Clicked', entry);
+            if (this.wantToAddMedia) {
+              await this.captureMedia();
+              entry.media=this.currentMedia;
+            }
             this.entries.push(entry);
+            this.currentMedia = ''
+            this.wantToAddMedia = false;
           }
         }
       ]
@@ -93,6 +148,7 @@ export class Tab2Page {
   }
 
   async showEditEntryPrompt(entry:any, index:any) {
+    this.wantToAddMedia = false;
     const prompt = await this.alertCtrl.create({
       header:'Edit Entry',
       cssClass: "large-prompt",
@@ -119,6 +175,14 @@ export class Tab2Page {
       ],
       buttons: [
         {
+          text: 'media',
+          handler: () => {
+            console.log('Want to Edit Media')
+            this.wantToAddMedia=true;
+            return false;
+          }
+        },
+        {
           text: 'Cancel',
           handler: data => {
             console.log('Cancel Clicked', data);
@@ -126,9 +190,17 @@ export class Tab2Page {
         },
         {
           text: 'save',
-          handler: entry => {
-            console.log('Save Clicked', entry);
-            this.entries[index] = entry;
+          handler: async editedEntry => {
+            console.log('Save clicked', editedEntry);
+            if (this.wantToAddMedia){
+              await this.captureMedia();
+              editedEntry.media =this.currentMedia;
+            } else {
+              editedEntry.media = entry.media;
+            }
+            this.entries[index] = editedEntry;
+            this.currentMedia = '';
+            this.wantToAddMedia = false;
           }
         }
       ]
