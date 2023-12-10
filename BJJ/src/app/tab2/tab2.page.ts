@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
 import { ToastController } from '@ionic/angular';
 import { AlertController } from '@ionic/angular';
-import { Camera, CameraResultType } from '@capacitor/camera';
+import { Camera,CameraSource, CameraResultType, Photo } from '@capacitor/camera';
 import { Share } from '@capacitor/share';
-
+import { defineCustomElements } from '@ionic/pwa-elements/loader';
 @Component({
   selector: 'app-tab2',
   templateUrl: 'tab2.page.html',
@@ -77,22 +77,70 @@ export class Tab2Page {
   }
 
   async captureMedia() {
+    const actionSheet = await this.alertCtrl.create({
+      header: 'Select Image Source',
+      buttons: [
+        {
+          text: 'Use Camera',
+          handler: () => {
+            this.takePicture();
+          }
+        },
+        {
+          text: 'Select from Gallery',
+          handler: () => {
+            this.selectFromGallery();
+          }
+        },
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        }
+      ]
+    });
+    await actionSheet.present();
+  }
+
+  async takePicture() {
+
     const image = await Camera.getPhoto({
+      source: CameraSource.Camera,
+      allowEditing: true,
+      resultType: CameraResultType.Uri,
+      // additional camera options
+    });
+    
+    this.processImage(image);
+  }
+
+  async selectFromGallery() {
+    const image = await Camera.getPhoto({
+      source: CameraSource.Photos,
       resultType: CameraResultType.Uri, 
       
     });
     if (image.webPath) {
       this.currentMedia = image.webPath;
+      this.processImage(image);
     } else {
       console.error('No image path returned');
       this.currentMedia = ''; 
     }
   }
+  
+  processImage(image: Photo) {
+    if (image && image.webPath) {
+      this.currentMedia = image.webPath;
+    } else {
+      console.error('No image path returned');
+      this.currentMedia = '';
+    }
+  }
 
   async showAddEntryPrompt() {
-    this.wantToAddMedia =false;
+    this.wantToAddMedia = false;
     const prompt = await this.alertCtrl.create({
-      header:'New Journal Entry',
+      header: 'New Journal Entry',
       cssClass: "large-prompt",
       message: "Enter the info for your new journal entry: ",
       inputs: [
@@ -111,18 +159,15 @@ export class Tab2Page {
           type: 'textarea',
           placeholder: "Notes",
         },
-      
       ],
       buttons: [
         {
           text: 'media',
           handler: () => {
-            console.log('Want to add media. ')
-            this.wantToAddMedia=true;
-            return false;
+            this.captureMedia();
+            return false; // Prevent prompt from closing
           }
         },
-
         {
           text: 'Cancel',
           handler: data => {
@@ -131,26 +176,22 @@ export class Tab2Page {
         },
         {
           text: 'save',
-          handler: async entry => {
+          handler: entry => {
             console.log('Save Clicked', entry);
-            if (this.wantToAddMedia) {
-              await this.captureMedia();
-              entry.media=this.currentMedia;
-            }
+            entry.media = this.currentMedia;
             this.entries.push(entry);
-            this.currentMedia = ''
-            this.wantToAddMedia = false;
+            this.currentMedia = ''; // Reset currentMedia for the next entry
           }
         }
       ]
     });
     await prompt.present();
   }
-
-  async showEditEntryPrompt(entry:any, index:any) {
+  
+  async showEditEntryPrompt(entry: any, index: any) {
     this.wantToAddMedia = false;
     const prompt = await this.alertCtrl.create({
-      header:'Edit Entry',
+      header: 'Edit Entry',
       cssClass: "large-prompt",
       message: "Please edit the entry: ",
       inputs: [
@@ -177,9 +218,8 @@ export class Tab2Page {
         {
           text: 'media',
           handler: () => {
-            console.log('Want to Edit Media')
-            this.wantToAddMedia=true;
-            return false;
+            this.captureMedia();
+            return false; // Prevent prompt from closing
           }
         },
         {
@@ -190,22 +230,17 @@ export class Tab2Page {
         },
         {
           text: 'save',
-          handler: async editedEntry => {
+          handler: editedEntry => {
             console.log('Save clicked', editedEntry);
-            if (this.wantToAddMedia){
-              await this.captureMedia();
-              editedEntry.media =this.currentMedia;
-            } else {
-              editedEntry.media = entry.media;
-            }
+            editedEntry.media = this.currentMedia;
             this.entries[index] = editedEntry;
-            this.currentMedia = '';
-            this.wantToAddMedia = false;
+            this.currentMedia = ''; // Reset currentMedia for the next entry
           }
         }
       ]
     });
     await prompt.present();
   }
+  
 
 }

@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { Camera, CameraResultType } from '@capacitor/camera';
+import { Camera, CameraResultType, Photo, CameraSource } from '@capacitor/camera';
 import { Share } from '@capacitor/share';
 import { ToastController } from '@ionic/angular';
 import { AlertController } from '@ionic/angular';
@@ -80,15 +80,63 @@ export class Tab3Page {
   }
 
   async captureMedia() {
+    const actionSheet = await this.alertCtrl.create({
+      header: 'Select Image Source',
+      buttons: [
+        {
+          text: 'Use Camera',
+          handler: () => {
+            this.takePicture();
+          }
+        },
+        {
+          text: 'Select from Gallery',
+          handler: () => {
+            this.selectFromGallery();
+          }
+        },
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        }
+      ]
+    });
+    await actionSheet.present();
+  }
+
+  async takePicture() {
+
     const image = await Camera.getPhoto({
+      source: CameraSource.Camera,
+      allowEditing: true,
+      resultType: CameraResultType.Uri,
+      // additional camera options
+    });
+    
+    this.processImage(image);
+  }
+
+  async selectFromGallery() {
+    const image = await Camera.getPhoto({
+      source: CameraSource.Photos,
       resultType: CameraResultType.Uri, 
       
     });
     if (image.webPath) {
       this.currentMedia = image.webPath;
+      this.processImage(image);
     } else {
       console.error('No image path returned');
       this.currentMedia = ''; 
+    }
+  }
+  
+  processImage(image: Photo) {
+    if (image && image.webPath) {
+      this.currentMedia = image.webPath;
+    } else {
+      console.error('No image path returned');
+      this.currentMedia = '';
     }
   }
 
@@ -124,9 +172,8 @@ export class Tab3Page {
         {
           text: 'media',
           handler: () => {
-            console.log('Want to add media. ')
-            this.wantToAddMedia=true;
-            return false;
+            this.captureMedia();
+            return false; // Prevent prompt from closing
           }
         },
         {
@@ -137,15 +184,11 @@ export class Tab3Page {
         },
         {
           text: 'save',
-          handler: async entry => {
+          handler: entry => {
             console.log('Save Clicked', entry);
-            if (this.wantToAddMedia){
-              await this.captureMedia();
-              entry.media=this.currentMedia;
-            }
+            entry.media = this.currentMedia;
             this.entries.push(entry);
-            this.currentMedia = ''
-            this.wantToAddMedia = false;
+            this.currentMedia = ''; // Reset currentMedia for the next entry
           }
         }
       ]
@@ -190,9 +233,8 @@ export class Tab3Page {
         {
           text: 'media',
           handler: () => {
-            console.log('Want to Edit Media')
-            this.wantToAddMedia=true;
-            return false;
+            this.captureMedia();
+            return false; // Prevent prompt from closing
           }
         },
         {
@@ -203,17 +245,11 @@ export class Tab3Page {
         },
         {
           text: 'save',
-          handler: async entry => {
-            console.log('Save Clicked', entry);
-            if (this.wantToAddMedia){
-              await this.captureMedia();
-              entry.media= this.currentMedia;
-            } else {
-              entry.media= entry.media;
-            }
-            this.entries[index] = entry;
-            this.currentMedia = '';
-            this.wantToAddMedia = false;
+          handler: editedEntry => {
+            console.log('Save clicked', editedEntry);
+            editedEntry.media = this.currentMedia;
+            this.entries[index] = editedEntry;
+            this.currentMedia = ''; // Reset currentMedia for the next entry
           }
         }
       ]
