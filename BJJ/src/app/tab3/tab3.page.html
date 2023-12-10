@@ -22,6 +22,10 @@
           <ion-label>{{entry.name}}</ion-label>
         </ion-item>
         <ion-item-options>
+          <ion-button (click)="shareEntry(entry, i)" ion-button color="light" icon-start>
+            <ion-icon name="share"></ion-icon>
+            Share
+          </ion-button>
           <ion-button (click)="editEntry(entry, i)"  ion-button color="primary" icon-start>
             <ion-icon name="create"></ion-icon>
             Edit
@@ -42,6 +46,10 @@
     <ion-item>
       <ion-label>Related Techniques</ion-label>
       <ion-content class = "ion-padding"><p>{{entry.relatedTechniques}}</p></ion-content>
+    </ion-item>
+    <ion-item>
+      <ion-label>Media</ion-label>
+      <ion-content class = "ion-padding"><img *ngIf="entry.media" [src]="entry.media" alt="Entry Media"></ion-content>
     </ion-item>
   </ion-item-group>
   </ion-list>
