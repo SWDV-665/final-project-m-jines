@@ -3,7 +3,16 @@ import { ToastController } from '@ionic/angular';
 import { AlertController } from '@ionic/angular';
 import { Camera,CameraSource, CameraResultType, Photo } from '@capacitor/camera';
 import { Share } from '@capacitor/share';
-import { defineCustomElements } from '@ionic/pwa-elements/loader';
+import { HttpClient } from '@angular/common/http';
+
+interface JournalEntry {
+  _id: string;
+  date: string;
+  techniques: string;
+  notes: string;
+  media: string;
+}
+
 @Component({
   selector: 'app-tab2',
   templateUrl: 'tab2.page.html',
@@ -13,25 +22,31 @@ export class Tab2Page {
   wantToAddMedia: boolean =false;
   title = "Training Journal"
   
-  entries = [
-    {
-      date: "09/10/2023",
-      techniques: "Single leg X, Ashi Garami",
-      notes: "notes about training here",
-      media: ""
-    }
-    ,{
-      date: "09/12/2023",
-      techniques: "Ashi Garami, Butterfly Ashi",
-      notes: "notes here blah blah blah ",
-      media: ""
-    }
-  ];
+  entries: JournalEntry[] = [];
 
   currentMedia: string = ''; 
-  constructor(public toastCtrl: ToastController, public alertCtrl: AlertController) {
+  constructor(private http: HttpClient, public toastCtrl: ToastController, public alertCtrl: AlertController) {
 
   }
+
+  getJournalEntries() {
+    return this.http.get<JournalEntry[]>('http://localhost:8080/api/journalentries');
+  }
+
+  addJournalEntry(entry:any) {
+    return this.http.post<JournalEntry>('http://localhost:8080/api/journalentries', entry);
+  }
+
+  updateJournalEntry(id: string, entry: any) {
+    return this.http.put<JournalEntry>(`http://localhost:8080/api/journalentries/${id}`, entry);
+  }
+
+  deleteJournalEntry(id: string) {
+    return this.http.delete(`http://localhost:8080/api/journalentries/${id}`);
+  }
+  
+  
+
   async shareEntry(entry: any, index: any) {
     console.log("Sharing Entry - ", entry, index);
     const toast = this.toastCtrl.create({
@@ -53,12 +68,15 @@ export class Tab2Page {
 
   async removeEntry(entry:any, index:any){
     console.log("Removing Item - ", entry, index);
-    const toast = this.toastCtrl.create({
+    const toast = await this.toastCtrl.create({
       message: 'Entry for ' + entry.date +" deleted.",
       duration: 3000
     });
     (await toast).present();
-    this.entries.splice(index,1);
+    this.deleteJournalEntry(entry._id).subscribe(() => {
+      console.log('Entry deleted');
+      this.entries.splice(index,1);
+    })
   }
 
   async editEntry(entry: any, index: any) {
@@ -179,7 +197,10 @@ export class Tab2Page {
           handler: entry => {
             console.log('Save Clicked', entry);
             entry.media = this.currentMedia;
-            this.entries.push(entry);
+            this.addJournalEntry(entry).subscribe(response =>{
+              console.log("Entry added", response);
+              this.getJournalEntries().subscribe(entries => this.entries = entries);
+            });
             this.currentMedia = ''; // Reset currentMedia for the next entry
           }
         }
@@ -233,7 +254,11 @@ export class Tab2Page {
           handler: editedEntry => {
             console.log('Save clicked', editedEntry);
             editedEntry.media = this.currentMedia;
-            this.entries[index] = editedEntry;
+            this.updateJournalEntry(entry._id, editedEntry).subscribe(response => {
+              console.log("Entry Updated", response);
+              this.getJournalEntries().subscribe(entries => this.entries = entries);
+            });
+            //this.entries[index] = editedEntry;
             this.currentMedia = ''; // Reset currentMedia for the next entry
           }
         }
@@ -241,6 +266,13 @@ export class Tab2Page {
     });
     await prompt.present();
   }
+
+  ionViewDidEnter() {
+    this.getJournalEntries().subscribe(entries => {
+      this.entries = entries;
+    });
+  }
+  
   
 
 }

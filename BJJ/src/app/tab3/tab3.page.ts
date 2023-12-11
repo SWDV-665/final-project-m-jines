@@ -3,6 +3,16 @@ import { Camera, CameraResultType, Photo, CameraSource } from '@capacitor/camera
 import { Share } from '@capacitor/share';
 import { ToastController } from '@ionic/angular';
 import { AlertController } from '@ionic/angular';
+import { HttpClient } from '@angular/common/http';
+
+interface TechniqueEntry {
+  _id: string;
+  name: string;
+  description: string;
+  relatedTechniques: string;
+  status: string;
+  media: string;
+}
 
 @Component({
   selector: 'app-tab3',
@@ -13,26 +23,27 @@ export class Tab3Page {
   wantToAddMedia: boolean =false;
   title = "Technique Library"
 
-  entries = [
-    {
-      name: "Tripod Sweep",
-      description: "napsdjnapsdnaopsdnas",
-      relatedTechniques: "Guard pull, collar sleeve, Single leg X, Ashi Garami",
-      status: "Proficient",
-      media:""
-    }
-    , {
-      name: "Lumbar Jack Sweep",
-      description: "napsdjnapsdnaopsdnas",
-      relatedTechniques: "Guard pull, collar sleeve, Single leg X, Ashi Garami",
-      status: "Proficient",
-      media: ""
-    }
-  ];
+  entries: TechniqueEntry[] = [];
 
   currentMedia: string = ''; 
-  constructor(public toastCtrl: ToastController, public alertCtrl: AlertController) {
+  constructor(private http: HttpClient, public toastCtrl: ToastController, public alertCtrl: AlertController) {
 
+  }
+
+  getTechniqueEntries() {
+    return this.http.get<TechniqueEntry[]>('http://localhost:8080/api/techniqueentries');
+  }
+
+  addTechniqueEntry(entry:any) {
+    return this.http.post<TechniqueEntry>('http://localhost:8080/api/techniqueentries', entry);
+  }
+
+  updateTechniqueEntry(id: string, entry: any) {
+    return this.http.put<TechniqueEntry>(`http://localhost:8080/api/techniqueentries/${id}`, entry);
+  }
+
+  deleteTechniqueEntry(id: string) {
+    return this.http.delete(`http://localhost:8080/api/techniqueentries/${id}`);
   }
 
   async shareEntry(entry: any, index: any) {
@@ -56,12 +67,15 @@ export class Tab3Page {
 
   async removeEntry(entry: any, index: any) {
     console.log("Removing Item - ", entry, index);
-    const toast = this.toastCtrl.create({
+    const toast = await this.toastCtrl.create({
       message: entry.name + " deleted.",
       duration: 3000
     });
     (await toast).present();
-    this.entries.splice(index, 1);
+    this.deleteTechniqueEntry(entry._id).subscribe(() => {
+      console.log('Entry deleted');
+      this.entries.splice(index,1);
+    })
   }
 
   async editEntry(entry: any, index: any) {
@@ -187,7 +201,10 @@ export class Tab3Page {
           handler: entry => {
             console.log('Save Clicked', entry);
             entry.media = this.currentMedia;
-            this.entries.push(entry);
+            this.addTechniqueEntry(entry).subscribe(response =>{
+              console.log("Entry added", response);
+              this.getTechniqueEntries().subscribe(entries => this.entries = entries);
+            });
             this.currentMedia = ''; // Reset currentMedia for the next entry
           }
         }
@@ -248,13 +265,23 @@ export class Tab3Page {
           handler: editedEntry => {
             console.log('Save clicked', editedEntry);
             editedEntry.media = this.currentMedia;
-            this.entries[index] = editedEntry;
+            this.updateTechniqueEntry(entry._id, editedEntry).subscribe(response => {
+              console.log("Entry Updated", response);
+              this.getTechniqueEntries().subscribe(entries => this.entries = entries);
+            });
+            //this.entries[index] = editedEntry;
             this.currentMedia = ''; // Reset currentMedia for the next entry
           }
         }
       ]
     });
     await prompt.present();
+  }
+
+  ionViewDidEnter() {
+    this.getTechniqueEntries().subscribe(entries => {
+      this.entries = entries;
+    });
   }
 
 }
