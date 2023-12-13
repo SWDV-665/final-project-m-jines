@@ -1,6 +1,29 @@
 .large-prompt {
-    --width: 90%; /* Adjust the width */
-    --max-width: 500px; /* Set a maximum width */
-    --min-height: 50%; /* Adjust minimum height */
-    font-size: 1.2em; /* Larger text */
+    --width: 90%;    
+    --max-width: 500px; 
+    --min-height: 50%; 
+    font-size: 1.2em; 
   }
+
+  .entry-content {
+    display: flex;
+    flex-direction: column;
+    margin-left: 18px;
+  }
+  
+  .entry-detail {
+    background-color: rgb(214, 210, 210);
+    color: black;
+    padding: 10px;
+  }
+  
+
+  .media-section .entry-detail img {
+    max-width: 66%;  
+    height: auto;    
+    object-fit: contain;
+    display: block;  
+    margin-left: auto;  
+    margin-right: auto; 
+  }
+  
