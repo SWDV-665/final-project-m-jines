@@ -5,6 +5,11 @@
       <div style="margin-right: 130px;">{{title}}</div>
     </ion-title>
   </ion-toolbar>
+
+  <!-- Additional Toolbar for Search -->
+  <ion-toolbar *ngIf="showSearchBar">
+    <ion-searchbar (ionChange)="onSearchChange($event)"></ion-searchbar>
+  </ion-toolbar>
 </ion-header>
 
 <ion-header collapse="condense">
@@ -15,7 +20,7 @@
 
 <ion-content padding>
   <ion-list>
-  <ion-item-group *ngFor = "let entry of entries; let i = index">
+  <ion-item-group *ngFor = "let entry of filteredTechniqueEntries; let i = index">
     <ion-item-divider style="background-color: maroon;">
       <ion-item-sliding >
         <ion-item>
@@ -70,10 +75,21 @@
   </ion-item-group>
   </ion-list>
 
-  <ion-fab vertical="bottom" horizontal="end">
-    <ion-fab-button (click)="addEntry()" color="success" mini>
-      <ion-icon name="add-circle-outline"></ion-icon>
-    </ion-fab-button>
-  </ion-fab>
+
 
 </ion-content>
+
+<ion-fab vertical="bottom" horizontal="end">
+  <ion-fab-button (click)="addEntry()" color="success" mini>
+    <ion-icon name="add-circle-outline"></ion-icon>
+  </ion-fab-button>
+</ion-fab>
+
+<ion-fab vertical="bottom" horizontal="end">
+  <ion-fab-button (click)="addEntry()" color="success" mini>
+    <ion-icon name="add-circle-outline"></ion-icon>
+  </ion-fab-button>
+  <ion-fab-button (click)="toggleSearch()" color="secondary" mini>
+    <ion-icon name="search"></ion-icon>
+  </ion-fab-button>
+</ion-fab>

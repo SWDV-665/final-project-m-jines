@@ -5,6 +5,11 @@
       <div style="margin-right: 130px;">{{title}}</div>
     </ion-title>
   </ion-toolbar>
+
+  <!-- Additional Toolbar for Search -->
+  <ion-toolbar *ngIf="showSearchBar">
+    <ion-searchbar (ionChange)="onSearchChange($event)"></ion-searchbar>
+  </ion-toolbar>
 </ion-header>
 
 <ion-header collapse="condense">
@@ -15,11 +20,11 @@
 
 <ion-content padding>
   <ion-list>
-  <ion-item-group *ngFor = "let entry of entries; let i = index">
+  <ion-item-group *ngFor = "let entry of filteredJournalEntries; let i = index">
     <ion-item-divider style="background-color: maroon;">
       <ion-item-sliding style="background-color: maroon;">
         <ion-item >
-          <ion-label style="color: maroon; font-weight: bold;">{{entry.date | date: 'MM/dd/yyy'}}</ion-label>
+          <ion-label style="color: maroon; font-weight: bold;">{{entry.date | date: 'MM/dd/yyyy'}}</ion-label>
         </ion-item>
         <ion-item-options>
 
@@ -92,5 +97,14 @@
 <ion-fab vertical="bottom" horizontal="end">
   <ion-fab-button (click)="addEntry()" color="success" mini>
     <ion-icon name="add-circle-outline"></ion-icon>
+  </ion-fab-button>
+</ion-fab>
+
+<ion-fab vertical="bottom" horizontal="end">
+  <ion-fab-button (click)="addEntry()" color="success" mini>
+    <ion-icon name="add-circle-outline"></ion-icon>
+  </ion-fab-button>
+  <ion-fab-button (click)="toggleSearch()" color="secondary" mini>
+    <ion-icon name="search"></ion-icon>
   </ion-fab-button>
 </ion-fab>

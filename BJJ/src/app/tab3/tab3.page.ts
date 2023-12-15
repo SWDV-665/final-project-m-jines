@@ -4,6 +4,8 @@ import { Share } from '@capacitor/share';
 import { ToastController } from '@ionic/angular';
 import { AlertController } from '@ionic/angular';
 import { HttpClient } from '@angular/common/http';
+import { ChangeDetectorRef } from '@angular/core';
+
 
 interface TechniqueEntry {
   _id: string;
@@ -20,14 +22,40 @@ interface TechniqueEntry {
   styleUrls: ['tab3.page.scss']
 })
 export class Tab3Page {
+  public showSearchBar: boolean = false;
   wantToAddMedia: boolean =false;
   title = "Technique Library"
-
+  filteredTechniqueEntries: TechniqueEntry[] = [];
   entries: TechniqueEntry[] = [];
 
   currentMedia: string = ''; 
-  constructor(private http: HttpClient, public toastCtrl: ToastController, public alertCtrl: AlertController) {
+  constructor(private changeDetector: ChangeDetectorRef, private http: HttpClient, public toastCtrl: ToastController, public alertCtrl: AlertController) {
 
+  }
+
+  ngOnInit() {
+    this.getTechniqueEntries().subscribe(
+      (data: TechniqueEntry[]) => {
+        this.entries = data;
+        this.filteredTechniqueEntries = [...this.entries];
+      },
+    );
+  }
+  
+  onSearchChange(event: any) {
+    const searchTerm = event.detail.value.toLowerCase();
+  
+    this.filteredTechniqueEntries = this.entries.filter(entry => {
+      return (entry.name && entry.name.toLowerCase().includes(searchTerm)) ||
+             (entry.description && entry.description.toLowerCase().includes(searchTerm)) ||
+             (entry.status && entry.status.toLowerCase().includes(searchTerm)) ||
+             (entry.relatedTechniques && entry.relatedTechniques.toLowerCase().includes(searchTerm));
+    });
+  }
+  
+
+  toggleSearch() {
+    this.showSearchBar = !this.showSearchBar;
   }
 
   getTechniqueEntries() {
@@ -75,6 +103,7 @@ export class Tab3Page {
     this.deleteTechniqueEntry(entry._id).subscribe(() => {
       console.log('Entry deleted');
       this.entries.splice(index,1);
+      this.filteredTechniqueEntries = [...this.entries];
     })
   }
 
@@ -124,7 +153,6 @@ export class Tab3Page {
       source: CameraSource.Camera,
       allowEditing: true,
       resultType: CameraResultType.Uri,
-      // additional camera options
     });
     
     this.processImage(image);
@@ -137,11 +165,24 @@ export class Tab3Page {
       
     });
     if (image.webPath) {
-      this.currentMedia = image.webPath;
-      this.processImage(image);
+      try {
+        const response = await fetch(image.webPath);
+        const blob = await response.blob();
+        const reader = new FileReader();
+  
+        reader.onloadend = () => {
+          this.currentMedia = reader.result as string;
+          this.changeDetector.detectChanges(); //change detection so i don't have to refresh
+        };
+  
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        this.currentMedia = '';
+      }
     } else {
       console.error('No image path returned');
-      this.currentMedia = ''; 
+      this.currentMedia = '';
     }
   }
   
@@ -176,18 +217,13 @@ export class Tab3Page {
           placeholder: "Related Techniques",
         },
 
-        {
-          name: 'status',
-          type: 'textarea',
-          placeholder: "Status",
-        },
       ],
       buttons: [
         {
           text: 'media',
           handler: () => {
             this.captureMedia();
-            return false; // Prevent prompt from closing
+            return false; 
           }
         },
         {
@@ -198,22 +234,37 @@ export class Tab3Page {
         },
         {
           text: 'save',
-          handler: entry => {
-            console.log('Save Clicked', entry);
-            entry.media = this.currentMedia;
-            this.addTechniqueEntry(entry).subscribe(response =>{
+          handler: newEntry => {
+            console.log('Save Clicked', newEntry);
+            newEntry.media = this.currentMedia;
+        
+            this.addTechniqueEntry(newEntry).subscribe(response => {
               console.log("Entry added", response);
-              this.getTechniqueEntries().subscribe(entries => this.entries = entries);
+        
+              // Re-fetch all entries from the server - fixing the refresh issue
+              this.getTechniqueEntries().subscribe(entries => {
+                this.entries = entries;
+                this.filteredTechniqueEntries = [...this.entries]; // Update the filtered list
+        
+                this.changeDetector.detectChanges(); // change detection
+              }, error => {
+                console.error('Error fetching entries:', error);
+              });
+        
+              this.currentMedia = ''; 
+            }, error => {
+              console.error('Error adding entry:', error);
             });
-            this.currentMedia = ''; // Reset currentMedia for the next entry
           }
         }
       ]
     });
+  
     await prompt.present();
   }
 
   async showEditEntryPrompt(entry: any, index: any) {
+    this.currentMedia=entry.media;
     this.wantToAddMedia = false;
     const prompt = await this.alertCtrl.create({
       header: 'Edit Entry',
@@ -237,12 +288,6 @@ export class Tab3Page {
           placeholder: "Related Techniques",
           value: entry.relatedTechniques,
         },
-        {
-          name: 'status',
-          type: 'textarea',
-          placeholder: "Status",
-          value: entry.status,
-        },
        
        
       ],
@@ -251,7 +296,7 @@ export class Tab3Page {
           text: 'media',
           handler: () => {
             this.captureMedia();
-            return false; // Prevent prompt from closing
+            return false; 
           }
         },
         {
@@ -265,16 +310,23 @@ export class Tab3Page {
           handler: editedEntry => {
             console.log('Save clicked', editedEntry);
             editedEntry.media = this.currentMedia;
+  
             this.updateTechniqueEntry(entry._id, editedEntry).subscribe(response => {
               console.log("Entry Updated", response);
-              this.getTechniqueEntries().subscribe(entries => this.entries = entries);
+  
+              // Update the entry in the array
+              this.entries[index] = response;
+              this.filteredTechniqueEntries = [...this.entries]; // update filtered list
+  
+              this.currentMedia = ''; 
+            }, error => {
+              console.error('Error updating entry:', error);
             });
-            //this.entries[index] = editedEntry;
-            this.currentMedia = ''; // Reset currentMedia for the next entry
           }
         }
       ]
     });
+  
     await prompt.present();
   }
 
